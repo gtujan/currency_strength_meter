@@ -1,0 +1,10 @@
+.venv/
+.server.pid
+server.log
+__pycache__/
+.DS_Store
+*.mq4
+*.ex4
+!CSMFeed.mq4
+!CSMFeed.ex4
+PROGRESS.md

@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# csmserve run|stop|restart|status|logs  [extra args passed to server.py, e.g. --port 8766]
+DIR="$(cd "$(dirname "$(readlink "${BASH_SOURCE[0]}" || echo "${BASH_SOURCE[0]}")")" && pwd)"
+PORT="${CSM_PORT:-8765}"
+HOST="${CSM_HOST:-0.0.0.0}"
+LOG="$DIR/server.log"
+PIDFILE="$DIR/.server.pid"
+PY="$DIR/.venv/bin/python"; [ -x "$PY" ] || PY="$(command -v python3)"
+
+# PID listening on our port (works even if started outside this script)
+listener() { lsof -nP -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null | head -1; }
+
+is_running() { [ -n "$(listener)" ]; }
+
+cmd_run() {
+  if is_running; then
+    echo "Already running (pid $(listener)) at http://127.0.0.1:$PORT/"
+    return 0
+  fi
+  cd "$DIR" || exit 1
+  nohup "$PY" server.py --host "$HOST" --port "$PORT" "$@" >"$LOG" 2>&1 &
+  echo $! >"$PIDFILE"
+  sleep 1
+  if is_running; then
+    echo "Started (pid $(listener)) at http://127.0.0.1:$PORT/"
+  else
+    echo "Failed to start. Last log lines:"; tail -n 20 "$LOG"; return 1
+  fi
+}
+
+cmd_stop() {
+  local pid; pid="$(listener)"
+  if [ -z "$pid" ]; then echo "Not running."; rm -f "$PIDFILE"; return 0; fi
+  kill "$pid"
+  for _ in 1 2 3 4 5 6 7 8 9 10; do is_running || break; sleep 0.3; done
+  is_running && { kill -9 "$pid"; sleep 0.3; }
+  rm -f "$PIDFILE"
+  echo "Stopped (pid $pid)."
+}
+
+cmd_status() {
+  if is_running; then echo "Running (pid $(listener)) at http://127.0.0.1:$PORT/"
+  else echo "Not running."; return 1; fi
+}
+
+action="${1:-}"; shift 2>/dev/null
+case "$action" in
+  run|start) cmd_run "$@" ;;
+  stop)      cmd_stop ;;
+  restart)   cmd_stop; cmd_run "$@" ;;
+  status)    cmd_status ;;
+  logs)      tail -f "$LOG" ;;
+  *) echo "Usage: csmserve run|stop|restart|status|logs  (env CSM_PORT to change port, default 8765)"; exit 2 ;;
+esac

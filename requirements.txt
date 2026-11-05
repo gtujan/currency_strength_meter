@@ -1,0 +1,2 @@
+# server.py uses only the Python standard library; nothing to install yet.
+# Add third-party packages here and the installer will pick them up.
