@@ -8,7 +8,7 @@
 
 Optional file-watch fallback:  python3 server.py --file "/path/to/MQL4/Files/csm_snapshot.json"
 """
-import argparse, json, os, queue, threading, time
+import argparse, json, os, queue, socketserver, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -44,6 +44,14 @@ def watch_file(path):
         except OSError:
             pass
         time.sleep(0.5)
+
+
+class Server(ThreadingHTTPServer):
+    def server_bind(self):
+        # HTTPServer.server_bind() calls socket.getfqdn(), a reverse-DNS lookup that can
+        # hang for a long time on machines with slow/broken DNS. We don't need the name.
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
 
 
 class H(BaseHTTPRequestHandler):
@@ -120,7 +128,7 @@ if __name__ == "__main__":
             print("auto-detected snapshot file:", a.file)
     if a.file:
         threading.Thread(target=watch_file, args=(a.file,), daemon=True).start()
-    srv = ThreadingHTTPServer((a.host, a.port), H)
+    srv = Server((a.host, a.port), H)
     srv.daemon_threads = True
     print(f"CSM dashboard: http://{a.host}:{a.port}/")
     srv.serve_forever()
