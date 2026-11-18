@@ -68,7 +68,7 @@ def cmd_run(extra):
     if port_open():
         print("Already running (pid %s) at %s" % (find_pid() or "?", URL))
         return 0
-    args = [venv_python(), os.path.join(HERE, "server.py"), "--host", HOST, "--port", str(PORT)] + extra
+    args = [venv_python(), "-u", os.path.join(HERE, "server.py"), "--host", HOST, "--port", str(PORT)] + extra
     kw = {}
     if IS_WIN:
         kw["creationflags"] = 0x00000008 | 0x00000200 | 0x08000000  # DETACHED | NEW_PROCESS_GROUP | NO_WINDOW
@@ -78,14 +78,14 @@ def cmd_run(extra):
         p = subprocess.Popen(args, cwd=HERE, stdin=subprocess.DEVNULL, stdout=log, stderr=log, **kw)
     with open(PIDFILE, "w") as f:
         f.write(str(p.pid))
-    for _ in range(20):
+    for _ in range(60):
         time.sleep(0.25)
         if port_open():
             print("Started (pid %d) at %s" % (p.pid, URL))
             return 0
         if p.poll() is not None:
             break
-    print("Failed to start. Last log lines:")
+    print("Failed to start (exit code %s). Last log lines:" % p.poll())
     cmd_tail(20, follow=False)
     return 1
 
