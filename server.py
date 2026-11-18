@@ -106,9 +106,15 @@ if __name__ == "__main__":
     a = ap.parse_args()
     if not a.file:
         import glob
-        hits = glob.glob(os.path.expanduser(
-            "~/Library/Application Support/CrossOver/Bottles/*/drive_c/users/*/AppData/Roaming/"
-            "MetaQuotes/Terminal/*/MQL4/Files/csm_snapshot.json"))
+        tail = "MetaQuotes/Terminal/*/MQL4/Files/csm_snapshot.json"
+        wine = "drive_c/users/*/AppData/Roaming/" + tail
+        pats = [
+            os.path.expanduser("~/Library/Application Support/CrossOver/Bottles/*/" + wine),  # macOS CrossOver
+            os.path.expanduser("~/.wine/" + wine),                                            # Linux / macOS Wine
+            os.path.expanduser("~/.var/app/*/.wine/" + wine),                                 # Flatpak Wine
+            os.path.join(os.environ.get("APPDATA", "-no-appdata-"), tail),                             # native Windows
+        ]
+        hits = [h for pat in pats for h in glob.glob(pat)]
         if hits:
             a.file = max(hits, key=os.path.getmtime)
             print("auto-detected snapshot file:", a.file)

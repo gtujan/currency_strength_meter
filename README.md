@@ -6,12 +6,22 @@ Shows the relative strength of 8 major currencies and gold in real time, and ran
 
 ## Install (one line)
 
+macOS / Linux / WSL:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/gtujan/currency_strength_meter/main/install.sh | bash
 ```
 
+Windows (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/gtujan/currency_strength_meter/main/install.ps1 | iex
+```
+
 This downloads the project to `~/currency_strength_meter`, creates `.venv`, installs `requirements.txt`,
-and links `csmserve` into `~/.local/bin`. Re-run it any time to update.
+and links `csmserve` into `~/.local/bin` (on Windows: a `csmserve.cmd` shim added to your user PATH). Requires Python 3.8+. Re-run it any time to update.
+
+Works on macOS, Linux and Windows. Without installing, `python csmserve.py run` does the same on any OS.
 
 Overrides: `CSM_DIR`, `CSM_BIN`, `CSM_BRANCH`, `CSM_REPO`.
 
