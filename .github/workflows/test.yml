@@ -1,0 +1,43 @@
+name: cross-platform
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  direct:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.8", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ matrix.python }}" }
+      - run: python tests/smoke.py python csmserve.py
+
+  installer-unix:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: install.sh then smoke via installed launcher
+        run: |
+          export CSM_LOCAL_SRC="$PWD" CSM_DIR="$RUNNER_TEMP/csm" CSM_BIN="$RUNNER_TEMP/bin"
+          bash install.sh
+          python3 tests/smoke.py "$CSM_BIN/csmserve"
+
+  installer-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install.ps1 then smoke via installed launcher
+        shell: pwsh
+        run: |
+          $env:CSM_LOCAL_SRC = $PWD.Path
+          $env:CSM_DIR = Join-Path $env:RUNNER_TEMP 'csm'
+          $env:CSM_BIN = Join-Path $env:RUNNER_TEMP 'bin'
+          .\install.ps1
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python tests/smoke.py (Join-Path $env:CSM_BIN 'csmserve.cmd')
