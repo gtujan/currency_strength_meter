@@ -77,16 +77,30 @@ function render(){
   p.sort((a,b)=>{const A=a[sortKey],B=b[sortKey];return (A>B?1:A<B?-1:0)*sortDir});
   $("rows").innerHTML=p.map(x=>`<tr class="${x.signal}"><td>${x.pair}</td><td>${x.buy.toFixed(1)}</td><td>${x.sell.toFixed(1)}</td><td>${x.delta.toFixed(1)}</td><td>${x.signal}</td><td>${x.state==="-"?"":`<span class="pill ${x.state}">${x.state}</span>`}</td><td class="${x.day}">${x.day==="HIGH"?"HIGH "+x.high:x.day==="LOW"?"LOW "+x.low:"mid"}</td><td>${x.mid}</td></tr>`).join("");
 }
+let es=null,lastTry=0;
+function accept(raw){try{const d=typeof raw==="string"?JSON.parse(raw):raw;
+  if(!d||!d.pairs||!d.currencies)return false;snap=d;lastRx=Date.now();render();return true}catch(_){return false}}
 function connect(){
-  const es=new EventSource("/stream");
-  es.onmessage=e=>{snap=JSON.parse(e.data);lastRx=Date.now();render()};
-  es.onerror=()=>{};
+  lastTry=Date.now();
+  if(es){es.onmessage=es.onerror=null;es.close()}
+  es=new EventSource("/stream");
+  es.onmessage=e=>accept(e.data);
+  es.onerror=()=>{ // browsers give up on some errors (readyState CLOSED) -> reconnect ourselves
+    if(es.readyState===2)setTimeout(connect,1000)};
 }
+async function poll(){ // one-shot fetch fallback, works even when the stream is dead
+  try{const r=await fetch("/api",{cache:"no-store"});if(r.ok)accept(await r.text())}catch(_){}
+}
+// Auto-recover: if no live data, re-fetch immediately and re-open the stream.
+function recover(){poll();if(Date.now()-lastTry>3000)connect()}
 setInterval(()=>{
-  if(!lastRx)return;
-  const s=(Date.now()-lastRx)/1000;
-  $("age").textContent=s<2?"live":`no data for ${s.toFixed(0)}s`;
-  $("dot").className=s<5?"ok":"stale";
-},500);
-connect();
+  const s=lastRx?(Date.now()-lastRx)/1000:Infinity;
+  if(lastRx){$("age").textContent=s<2?"live":`no data for ${s.toFixed(0)}s`;$("dot").className=s<5?"ok":"stale"}
+  if(s>6)recover(); // retries every tick (rate-limited) until data flows again
+},1000);
+// Waking from idle / sleep / background tab / network change
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)recover()});
+addEventListener("online",recover);addEventListener("focus",recover);
+addEventListener("pageshow",e=>{if(e.persisted)recover()});
+poll();connect();
 </script></body></html>
