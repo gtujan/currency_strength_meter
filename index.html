@@ -44,6 +44,14 @@ tr.BUY td{color:var(--buy)}tr.SELL td{color:var(--sell)}tr.WAIT td{color:var(--w
 #filter{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 button{background:#0e1219;color:var(--tx);border:1px solid var(--line);border-radius:5px;padding:3px 10px;cursor:pointer;font:inherit}
 button.on{border-color:var(--gold);color:var(--gold)}
+@media(max-width:600px){ /* phones: drop redundant/low-value columns so the table fits without side-scrolling */
+ .c-sell,.c-day{display:none}
+ table{min-width:0}
+ td,th{padding:7px 5px;font-size:12px}
+ .pill{padding:1px 5px;font-size:10px}
+ header{gap:2px 10px}
+ .card{padding:10px}}
+@media(max-width:400px){td,th{padding:7px 3px;font-size:11px}.pill{padding:1px 4px;font-size:9px}.card{padding:8px}}
 </style></head><body>
 <header><h1>CSM LIVE</h1><span id="srv" class="tag"></span>
 <div id="status"><span id="age">waiting for feed…</span><span id="dot"></span></div></header>
@@ -54,10 +62,10 @@ button.on{border-color:var(--gold);color:var(--gold)}
   <div class="scroll"><table><thead><tr id="thead"></tr></thead><tbody id="rows"></tbody></table></div></section>
 </main>
 <script>
-const cols=[["pair","PAIR"],["buy","BUY%"],["sell","SELL%"],["delta","Δ"],["signal","SIGNAL"],["state","STATE"],["day","DAY"],["mid","PRICE"]];
+const cols=[["pair","PAIR"],["buy","BUY%"],["sell","SELL%","c-sell"],["delta","Δ"],["signal","SIGNAL"],["state","STATE"],["day","DAY","c-day"],["mid","PRICE"]];
 let snap=null,lastRx=0,sortKey="absdelta",sortDir=-1,flt="ALL";
 const $=id=>document.getElementById(id);
-$("thead").innerHTML=cols.map(c=>`<th data-k="${c[0]}">${c[1]}</th>`).join("");
+$("thead").innerHTML=cols.map(c=>`<th data-k="${c[0]}"${c[2]?` class="${c[2]}"`:""}>${c[1]}</th>`).join("");
 $("thead").onclick=e=>{const k=e.target.dataset.k;if(!k)return;
   if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=(k==="pair"||k==="signal"||k==="state"||k==="day")?1:-1}render()};
 $("filter").innerHTML=["ALL","BUY","SELL","WAIT"].map(f=>`<button data-f="${f}" class="${f==="ALL"?"on":""}">${f}</button>`).join("");
@@ -75,7 +83,7 @@ function render(){
     return `<div><div class="cur"><span>${x.code}</span><div class="bar"><i style="width:${x.strength*10}%;background:${col}"></i><b style="left:50%"></b></div><span style="color:${col}">${x.strength.toFixed(1)}</span></div>${tag?`<div class="tag" style="margin:-3px 0 0 52px">${tag}</div>`:""}</div>`}).join("");
   let p=snap.pairs.map(x=>({...x,absdelta:Math.abs(x.delta)})).filter(x=>flt==="ALL"||x.signal===flt);
   p.sort((a,b)=>{const A=a[sortKey],B=b[sortKey];return (A>B?1:A<B?-1:0)*sortDir});
-  $("rows").innerHTML=p.map(x=>`<tr class="${x.signal}"><td>${x.pair}</td><td>${x.buy.toFixed(1)}</td><td>${x.sell.toFixed(1)}</td><td>${x.delta.toFixed(1)}</td><td>${x.signal}</td><td>${x.state==="-"?"":`<span class="pill ${x.state}">${x.state}</span>`}</td><td class="${x.day}">${x.day==="HIGH"?"HIGH "+x.high:x.day==="LOW"?"LOW "+x.low:"mid"}</td><td>${x.mid}</td></tr>`).join("");
+  $("rows").innerHTML=p.map(x=>`<tr class="${x.signal}"><td>${x.pair}</td><td>${x.buy.toFixed(1)}</td><td class="c-sell">${x.sell.toFixed(1)}</td><td>${x.delta.toFixed(1)}</td><td>${x.signal}</td><td>${x.state==="-"?"":`<span class="pill ${x.state}">${x.state}</span>`}</td><td class="c-day ${x.day}">${x.day==="HIGH"?"HIGH "+x.high:x.day==="LOW"?"LOW "+x.low:"mid"}</td><td>${x.mid}</td></tr>`).join("");
 }
 let es=null,lastTry=0;
 function accept(raw){try{const d=typeof raw==="string"?JSON.parse(raw):raw;
